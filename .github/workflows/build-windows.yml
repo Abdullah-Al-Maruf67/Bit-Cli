@@ -30,8 +30,8 @@ jobs:
     - name: Build the program
       shell: msys2 {0}
       run: |
-        make  # Use make in MSYS2 environment
-        # If your Makefile requires a specific name: make -f Makefile
+        mingw32-make  # Use mingw32-make in MSYS2 MINGW64 environment
+        # If your Makefile requires a specific name: mingw32-make -f Makefile
 
     - name: Upload .exe artifact
       uses: actions/upload-artifact@v4  # Upload the artifact
