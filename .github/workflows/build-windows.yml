@@ -1,0 +1,44 @@
+name: Build C Program for Windows
+
+on:
+  push:
+    branches:
+      - main  # Trigger the workflow on 'main' branch
+  pull_request:
+    branches:
+      - main  # Trigger workflow on PRs to 'main'
+
+jobs:
+  build:
+    runs-on: windows-latest  # Use the Windows runner to compile for Windows
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2  # Checkout your code from GitHub
+
+    - name: Set up MinGW and dependencies
+      run: |
+        choco install mingw
+        choco install openssl
+        refreshenv  # Refresh environment variables
+
+    - name: Set up the environment for building
+      run: |
+        mkdir -p C:/Program\ Files/mingw
+        echo "export PATH=\$PATH:/c/Program\ Files/mingw/bin" >> $GITHUB_ENV
+
+    - name: Install required libraries (e.g., curl, json-c, zlib)
+      run: |
+        choco install libcurl zlib json-c
+
+    - name: Build the program
+      run: |
+        mingw32-make  # Use mingw32-make (Windows-compatible Make)
+        # Alternatively, use your original Makefile's command directly:
+        # mingw32-make -f Makefile
+
+    - name: Upload .exe artifact
+      uses: actions/upload-artifact@v2
+      with:
+        name: bit.exe  # The name of the file to be uploaded
+        path: bit.exe  # Path to the built executable
