@@ -32,10 +32,18 @@ jobs:
       shell: msys2 {0}
       run: |
         mingw32-make -f Makefile  # Specify the Makefile explicitly
-        # Adjust the target if needed, e.g., mingw32-make -f Makefile all
 
-    - name: Upload .exe artifact
+    - name: Copy required DLLs
+      shell: msys2 {0}
+      run: |
+        cp /mingw64/bin/libcurl-4.dll .
+        cp /mingw64/bin/zlib1.dll .
+        cp /mingw64/bin/libjson-c-5.dll .
+        cp /mingw64/bin/libssl-3-x64.dll .
+        cp /mingw64/bin/libcrypto-3-x64.dll .
+
+    - name: Upload artifact
       uses: actions/upload-artifact@v4  # Upload the artifact
       with:
-        name: bit.exe
-        path: bit.exe  # Path to the built executable
+        name: bit-windows
+        path: .

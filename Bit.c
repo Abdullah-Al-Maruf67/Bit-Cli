@@ -16,6 +16,7 @@
 #include <openssl/buffer.h>
 #include <ctype.h>
 #include <strings.h>
+#include <inttypes.h>
 
 #ifdef _WIN32
 #include <io.h>
@@ -1265,10 +1266,10 @@ int create_bit_directories() {
 
 char *generate_commit_hash(BitCommit *commit) {
     char hash_input[4096] = {0};
-    snprintf(hash_input, sizeof(hash_input), "%s%s%lld%s",
+    snprintf(hash_input, sizeof(hash_input), "%s%s%" PRIdMAX "%s",
              commit->author,
              commit->message,
-             commit->timestamp,
+             (intmax_t)commit->timestamp,
              commit->parent_hash ? commit->parent_hash : "");
 
     // Include files in hash
