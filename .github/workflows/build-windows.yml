@@ -27,6 +27,11 @@ jobs:
           mingw-w64-x86_64-zlib
           mingw-w64-x86_64-json-c
           mingw-w64-x86_64-openssl
+          mingw-w64-x86_64-brotli
+          mingw-w64-x86_64-libiconv
+          mingw-w64-x86_64-nghttp2
+          mingw-w64-x86_64-libidn2
+          mingw-w64-x86_64-libpsl
 
     - name: Build the program
       shell: msys2 {0}
@@ -41,6 +46,12 @@ jobs:
         cp /mingw64/bin/libjson-c-5.dll .
         cp /mingw64/bin/libssl-3-x64.dll .
         cp /mingw64/bin/libcrypto-3-x64.dll .
+        cp /mingw64/bin/libbrotlidec.dll .
+        cp /mingw64/bin/libgcc_s_seh-1.dll .
+        cp /mingw64/bin/libiconv-2.dll .
+        cp /mingw64/bin/libnghttp2-14.dll .
+        cp /mingw64/bin/libidn2-0.dll .
+        cp /mingw64/bin/libpsl-5.dll .
 
     - name: Upload artifact
       uses: actions/upload-artifact@v4  # Upload the artifact
