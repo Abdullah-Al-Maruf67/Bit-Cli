@@ -30,8 +30,12 @@ jobs:
           mingw-w64-x86_64-brotli
           mingw-w64-x86_64-libiconv
           mingw-w64-x86_64-nghttp2
+          mingw-w64-x86_64-nghttp3
+          mingw-w64-x86_64-ngtcp2
+          mingw-w64-x86_64-libssh2
           mingw-w64-x86_64-libidn2
           mingw-w64-x86_64-libpsl
+          mingw-w64-x86_64-winpthreads
 
     - name: Build the program
       shell: msys2 {0}
@@ -41,17 +45,30 @@ jobs:
     - name: Copy required DLLs
       shell: msys2 {0}
       run: |
+        # Core libraries
         cp /mingw64/bin/libcurl-4.dll .
         cp /mingw64/bin/zlib1.dll .
         cp /mingw64/bin/libjson-c-5.dll .
         cp /mingw64/bin/libssl-3-x64.dll .
         cp /mingw64/bin/libcrypto-3-x64.dll .
+        # Brotli
+        cp /mingw64/bin/libbrotlienc.dll .
         cp /mingw64/bin/libbrotlidec.dll .
-        cp /mingw64/bin/libgcc_s_seh-1.dll .
-        cp /mingw64/bin/libiconv-2.dll .
+        # HTTP/2+ and QUIC deps
         cp /mingw64/bin/libnghttp2-14.dll .
+        cp /mingw64/bin/libnghttp3-9.dll .
+        cp /mingw64/bin/libngtcp2-16.dll .
+        cp /mingw64/bin/libngtcp2_crypto_ossl.dll .
+        # SSH and other curl deps
+        cp /mingw64/bin/libssh2-1.dll .
         cp /mingw64/bin/libidn2-0.dll .
         cp /mingw64/bin/libpsl-5.dll .
+        cp /mingw64/bin/libiconv-2.dll .
+        # Runtime and threading
+        cp /mingw64/bin/libgcc_s_seh-1.dll .
+        cp /mingw64/bin/libwinpthread-1.dll .
+        # Additional potential deps (safe to include)
+        cp /mingw64/bin/libbz2-1.dll .
 
     - name: Upload artifact
       uses: actions/upload-artifact@v4  # Upload the artifact
