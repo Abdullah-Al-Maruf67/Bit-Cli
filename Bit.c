@@ -17,6 +17,14 @@
 #include <ctype.h>
 #include <strings.h>
 
+#ifdef _WIN32
+#include <io.h>
+#define make_dir(path, mode) mkdir(path)
+#define strcasecmp _stricmp
+#else
+#define make_dir(path, mode) mkdir(path, mode)
+#endif
+
 // Configuration
 #define BIT_DIRECTORY ".bit"
 #define AUTH_TOKEN_FILE ".bit/auth_token"
@@ -447,7 +455,7 @@ char* load_last_commit_id() {
 // ============================================================================
 
 int bit_login(const char *username, const char *password) {
-    printf("🔐 Logging in as %s...\n", username);
+    printf("Logging in as %s...\n", username);
     
     // Build JSON payload
     struct json_object *json_payload = json_object_new_object();
@@ -468,7 +476,7 @@ int bit_login(const char *username, const char *password) {
         // Parse response
         struct json_object *json_response = json_tokener_parse(response);
         if (!json_response) {
-            printf("❌ Failed to parse JSON response\n");
+            printf("Failed to parse JSON response\n");
             free(response);
             json_object_put(json_payload);
             return FAILURE;
@@ -478,23 +486,22 @@ int bit_login(const char *username, const char *password) {
         if (json_object_object_get_ex(json_response, "access", &access_token_obj)) {
             const char *access_token = json_object_get_string(access_token_obj);
             if (access_token && strlen(access_token) > 0) {
-                printf("Access token: %s\n", access_token);
                 strcpy(g_auth_token, access_token);
                 save_auth_token(access_token);
-                printf("✅ Login successful!\n");
+                printf("Login successful!\n");
             } else {
-                printf("❌ Access token is empty or null\n");
+                printf("Access token is empty or null\n");
             }
             json_object_put(json_response);
             free(response);
             json_object_put(json_payload);
             return SUCCESS;
         } else {
-            printf("❌ Failed to find access_token in response\n");
+            printf("Failed to find access_token in response\n");
             json_object_put(json_response);
         }
     } else {
-        printf("❌ Login failed (Status: %d)\n", status_code);
+        printf("Login failed (Status: %d)\n", status_code);
         if (response) {
             printf("Response: %s\n", response);
         }
@@ -506,7 +513,7 @@ int bit_login(const char *username, const char *password) {
 }
 
 int bit_create_repo(const char *name, const char *description) {
-    printf("🏗️ Creating repository: %s\n", name);
+    printf("Creating repository: %s\n", name);
     
     // Check if we have auth token
     if (strlen(g_auth_token) == 0) {
@@ -515,7 +522,7 @@ int bit_create_repo(const char *name, const char *description) {
             strcpy(g_auth_token, token);
             free(token);
         } else {
-            printf("❌ Not logged in. Use 'bit login' first.\n");
+            printf("Not logged in. Use 'bit login' first.\n");
             return FAILURE;
         }
     }
@@ -558,8 +565,8 @@ int bit_create_repo(const char *name, const char *description) {
                 const char *share_token = json_object_get_string(token_obj);
                 strcpy(g_share_token, share_token);
                 save_share_token(share_token);
-                printf("✅ Repository created successfully!\n");
-                printf("🔗 Share token: %s\n", share_token);
+                printf("Repository created successfully!\n");
+                printf("Share token: %s\n", share_token);
                 json_object_put(json_response);
                 free(response);
                 json_object_put(json_payload);
@@ -569,7 +576,7 @@ int bit_create_repo(const char *name, const char *description) {
         
         json_object_put(json_response);
     } else {
-        printf("❌ Repository creation failed (Status: %d)\n", status_code);
+        printf("Repository creation failed (Status: %d)\n", status_code);
         if (response) {
             printf("Response: %s\n", response);
         }
@@ -581,7 +588,7 @@ int bit_create_repo(const char *name, const char *description) {
 }
 
 int bit_generate_share_token(const char *repo_id) {
-    printf("🔗 Generating new share token for repository %s...\n", repo_id);
+    printf("Generating new share token for repository %s...\n", repo_id);
     
     // Check if we have auth token
     if (strlen(g_auth_token) == 0) {
@@ -590,7 +597,7 @@ int bit_generate_share_token(const char *repo_id) {
             strcpy(g_auth_token, token);
             free(token);
         } else {
-            printf("❌ Not logged in. Use 'bit login' first.\n");
+            printf("Not logged in. Use 'bit login' first.\n");
             return FAILURE;
         }
     }
@@ -615,8 +622,8 @@ int bit_generate_share_token(const char *repo_id) {
             const char *share_token = json_object_get_string(token_obj);
             strcpy(g_share_token, share_token);
             save_share_token(share_token);
-            printf("✅ New share token generated!\n");
-            printf("🔗 Share token: %s\n", share_token);
+            printf("New share token generated!\n");
+            printf("Share token: %s\n", share_token);
             json_object_put(json_response);
             free(response);
             return SUCCESS;
@@ -624,7 +631,7 @@ int bit_generate_share_token(const char *repo_id) {
         
         json_object_put(json_response);
     } else {
-        printf("❌ Token generation failed (Status: %d)\n", status_code);
+        printf("Token generation failed (Status: %d)\n", status_code);
         if (response) {
             printf("Response: %s\n", response);
         }
@@ -635,7 +642,7 @@ int bit_generate_share_token(const char *repo_id) {
 }
 
 int bit_commit_to_server(const char *author, const char *email, const char *message) {
-    printf("📝 Creating commit: %s\n", message);
+    printf("Creating commit: %s\n", message);
     
     // Check if we have share token
     if (strlen(g_share_token) == 0) {
@@ -644,7 +651,7 @@ int bit_commit_to_server(const char *author, const char *email, const char *mess
             strcpy(g_share_token, token);
             free(token);
         } else {
-            printf("❌ No share token found. Use 'bit create-repo' or 'bit share' first.\n");
+            printf("No share token found. Use 'bit create-repo' or 'bit share' first.\n");
             return FAILURE;
         }
     }
@@ -653,12 +660,11 @@ int bit_commit_to_server(const char *author, const char *email, const char *mess
     IndexEntry *current_entries;
     size_t current_count;
     if (load_entries(".bit/index", &current_entries, &current_count) != SUCCESS) {
-        printf("❌ Failed to load index.\n");
+        printf("Failed to load index.\n");
         return FAILURE;
     }
     
-    // Auto-stage changes to tracked files (like git commit -a)
-    printf("🔄 Auto-staging changes to tracked files...\n");
+    printf("Auto-staging changes to tracked files...\n");
     
     // Collect current working directory files and hashes
     struct FileHash {
@@ -752,14 +758,13 @@ int bit_commit_to_server(const char *author, const char *email, const char *mess
                         get_object_path(wd_hash, object_path, sizeof(object_path));
                         char dir_path[256];
                         get_object_dir(wd_hash, dir_path, sizeof(dir_path));
-                        if (mkdir(dir_path, 0755) != 0 && errno != EEXIST) {
+                        if (make_dir(dir_path, 0755) != 0 && errno != EEXIST) {
                             fprintf(stderr, "Failed to create object dir %s\n", dir_path);
                         } else {
                             FILE *object_file = fopen(object_path, "wb");
                             if (object_file) {
                                 fwrite(compressed_data, 1, compressed_size, object_file);
                                 fclose(object_file);
-                                printf("Staged modified file: %s (Hash: %s)\n", current_entries[i].path, wd_hash);
                                 changes_staged = true;
                             }
                         }
@@ -772,8 +777,6 @@ int bit_commit_to_server(const char *author, const char *email, const char *mess
             }
             new_current_count++;
         } else {
-            // Stage deletion
-            printf("Staged deletion of %s\n", current_entries[i].path);
             changes_staged = true;
         }
     }
@@ -829,14 +832,14 @@ int bit_commit_to_server(const char *author, const char *email, const char *mess
         size_t compressed_size;
         unsigned char *compressed_data = read_file(obj_path, &compressed_size);
         if (!compressed_data) {
-            printf("❌ Failed to read object for %s\n", current_entries[i].path);
+            printf("Failed to read object for %s\n", current_entries[i].path);
             continue;
         }
         
         char *base64_data = base64_encode(compressed_data, compressed_size);
         free(compressed_data);
         if (!base64_data) {
-            printf("❌ Failed to encode %s\n", current_entries[i].path);
+            printf("Failed to encode %s\n", current_entries[i].path);
             continue;
         }
         
@@ -901,7 +904,7 @@ int bit_commit_to_server(const char *author, const char *email, const char *mess
     int status_code = http_post(url, json_str, NULL, &response);
     
     if (status_code == 201) {
-        printf("✅ Commit created successfully!\n");
+        printf("Commit created successfully!\n");
         
         // Parse response to show summary and save commit id
         struct json_object *json_response = json_tokener_parse(response);
@@ -911,7 +914,7 @@ int bit_commit_to_server(const char *author, const char *email, const char *mess
             json_object_object_get_ex(operations_summary_obj, "updated", &updated_obj)) {
             
             int updated_count = json_object_array_length(updated_obj);
-            printf("📁 Files updated: %d\n", updated_count);
+            printf("Files updated: %d\n", updated_count);
         }
         
         struct json_object *id_obj;
@@ -938,7 +941,7 @@ int bit_commit_to_server(const char *author, const char *email, const char *mess
         
         json_object_put(json_response);
     } else {
-        printf("❌ Commit failed (Status: %d)\n", status_code);
+        printf("Commit failed (Status: %d)\n", status_code);
         if (response) {
             printf("Response: %s\n", response);
         }
@@ -968,13 +971,13 @@ int bit_commit_to_server(const char *author, const char *email, const char *mess
 int bit_push() {
     char *repo_id = load_repo_id();
     if (!repo_id) {
-        printf("❌ No repository ID found. Create a repository first.\n");
+        printf("No repository ID found. Create a repository first.\n");
         return FAILURE;
     }
 
     char *commit_id = load_last_commit_id();
     if (!commit_id) {
-        printf("❌ No last commit ID found. Commit changes first.\n");
+        printf("No last commit ID found. Commit changes first.\n");
         free(repo_id);
         return FAILURE;
     }
@@ -997,7 +1000,7 @@ int bit_push() {
             strcpy(g_auth_token, token);
             free(token);
         } else {
-            printf("❌ Not logged in. Use 'bit login' first.\n");
+            printf("Not logged in. Use 'bit login' first.\n");
             free(repo_id);
             free(commit_id);
             return FAILURE;
@@ -1015,9 +1018,9 @@ int bit_push() {
     int status_code = http_post(url, "{}", auth_header, &response);
 
     if (status_code == 200 || status_code == 201) {
-        printf("✅ Push successful!\n");
+        printf("Push successful!\n");
     } else {
-        printf("❌ Push failed (Status: %d)\n", status_code);
+        printf("Push failed (Status: %d)\n", status_code);
         if (response) {
             printf("Response: %s\n", response);
         }
@@ -1225,7 +1228,7 @@ int initialize_directory(const char *path) {
         return 1; // Already defined
     }
     
-    if (mkdir(path, 0755) == -1) {
+    if (make_dir(path, 0755) == -1) {
         return FAILURE;
     }
     
@@ -1240,7 +1243,7 @@ int create_bit_directories() {
     };
 
     for (size_t i = 0; i < sizeof(dirs) / sizeof(dirs[0]); i++) {
-        if (mkdir(dirs[i], 0755) != 0 && errno != EEXIST) {
+        if (make_dir(dirs[i], 0755) != 0 && errno != EEXIST) {
             fprintf(stderr, "Failed to create directory %s: %s\n", dirs[i], strerror(errno));
             return FAILURE;
         }
@@ -1262,7 +1265,7 @@ int create_bit_directories() {
 
 char *generate_commit_hash(BitCommit *commit) {
     char hash_input[4096] = {0};
-    snprintf(hash_input, sizeof(hash_input), "%s%s%ld%s",
+    snprintf(hash_input, sizeof(hash_input), "%s%s%lld%s",
              commit->author,
              commit->message,
              commit->timestamp,
@@ -1300,7 +1303,7 @@ char *generate_commit_hash(BitCommit *commit) {
 int write_commit_file(BitCommit *commit) {
     if (!commit) return FAILURE;
 
-    if (mkdir(".bit/commits", 0755) != 0 && errno != EEXIST) {
+    if (make_dir(".bit/commits", 0755) != 0 && errno != EEXIST) {
         fprintf(stderr, "Error creating commits directory: %s\n", strerror(errno));
         return FAILURE;
     }
@@ -1329,8 +1332,6 @@ int write_commit_file(BitCommit *commit) {
     }
 
     fclose(commit_file);
-
-    printf("Committed %zu file(s)\n", commit->staged_files_count);
 
     return SUCCESS;
 }
@@ -1494,7 +1495,7 @@ int mkdir_p(const char *path) {
     for (p = dir_path + 1; *p; p++) {
         if (*p == '/') {
             *p = '\0';
-            if (mkdir(dir_path, 0755) != 0 && errno != EEXIST) {
+            if (make_dir(dir_path, 0755) != 0 && errno != EEXIST) {
                 free(dir_path);
                 return FAILURE;
             }
@@ -1502,7 +1503,7 @@ int mkdir_p(const char *path) {
         }
     }
 
-    if (mkdir(dir_path, 0755) != 0 && errno != EEXIST) {
+    if (make_dir(dir_path, 0755) != 0 && errno != EEXIST) {
         free(dir_path);
         return FAILURE;
     }
@@ -1601,7 +1602,7 @@ int add_file(const char *filepath) {
         fprintf(stderr, "Invalid hash\n");
         return FAILURE;
     }
-    if (mkdir(dir_path, 0755) != 0 && errno != EEXIST) {
+    if (make_dir(dir_path, 0755) != 0 && errno != EEXIST) {
         free(compressed_data);
         fprintf(stderr, "Failed to create object dir %s\n", dir_path);
         return FAILURE;
@@ -1643,10 +1644,6 @@ int add_file(const char *filepath) {
 
     int result = save_entries(".bit/index", entries, count);
     free_index(entries, count);
-
-    if (result == SUCCESS) {
-        printf("Staged file: %s (Hash: %s)\n", filepath, hash);
-    }
 
     return result;
 }
@@ -1903,7 +1900,7 @@ int bit_sync() {
         size_t comp_size;
         unsigned char *comp_data = read_file(obj_path, &comp_size);
         if (!comp_data) {
-            printf("❌ Failed to read object for %s\n", files[i].path);
+            printf("Failed to read object for %s\n", files[i].path);
             continue;
         }
 
@@ -1911,7 +1908,7 @@ int bit_sync() {
         unsigned char *dec_data = decompress_data(comp_data, comp_size, &dec_size);
         free(comp_data);
         if (!dec_data) {
-            printf("❌ Failed to decompress %s\n", files[i].path);
+            printf("Failed to decompress %s\n", files[i].path);
             continue;
         }
 
@@ -1926,7 +1923,7 @@ int bit_sync() {
 
         FILE *out = fopen(files[i].path, "wb");
         if (!out) {
-            printf("❌ Failed to write %s\n", files[i].path);
+            printf("Failed to write %s\n", files[i].path);
             free(dec_data);
             continue;
         }
@@ -1993,7 +1990,7 @@ int main(int argc, char *argv[]) {
                 curl_global_cleanup();
                 return result;
             } else {
-                printf("❌ Invalid input\n");
+                printf("Invalid input\n");
                 curl_global_cleanup();
                 return FAILURE;
             }
@@ -2004,7 +2001,7 @@ int main(int argc, char *argv[]) {
         }
     } else if (strcmp(argv[1], "create-repo") == 0) {
         if (argc < 3) {
-            printf("❌ Repository name required\n");
+            printf("Repository name required\n");
             printf("Usage: bit create-repo <name> [description]\n");
             curl_global_cleanup();
             return FAILURE;
@@ -2016,7 +2013,7 @@ int main(int argc, char *argv[]) {
         return result;
     } else if (strcmp(argv[1], "share") == 0) {
         if (argc < 3) {
-            printf("❌ Repository ID required\n");
+            printf("Repository ID required\n");
             printf("Usage: bit share <repo_id>\n");
             curl_global_cleanup();
             return FAILURE;
@@ -2027,26 +2024,26 @@ int main(int argc, char *argv[]) {
         return result;
     } else if (strcmp(argv[1], "share_token") == 0) {
         if (argc < 3) {
-            printf("❌ Share token required\n");
+            printf("Share token required\n");
             curl_global_cleanup();
             return FAILURE;
         }
 
         strcpy(g_share_token, argv[2]);
         save_share_token(argv[2]);
-        printf("✅ Share token set to %s\n", argv[2]);
+        printf("Share token set to %s\n", argv[2]);
         curl_global_cleanup();
         return SUCCESS;
     } else if (strcmp(argv[1], "set-repo-id") == 0) {
         if (argc < 3) {
-            printf("❌ Repository ID required\n");
+            printf("Repository ID required\n");
             curl_global_cleanup();
             return FAILURE;
         }
 
         int result = save_repo_id(argv[2]);
         if (result == SUCCESS) {
-            printf("✅ Repository ID set to %s\n", argv[2]);
+            printf("Repository ID set to %s\n", argv[2]);
         }
         curl_global_cleanup();
         return result;
@@ -2067,7 +2064,7 @@ int main(int argc, char *argv[]) {
         }
 
         if (!message || !author || !email) {
-            printf("❌ Missing required commit arguments\n");
+            printf("Missing required commit arguments\n");
             printf("Usage: bit commit -m \"<message>\" -a \"<author>\" -e \"<email>\"\n");
             curl_global_cleanup();
             return FAILURE;
@@ -2082,7 +2079,7 @@ int main(int argc, char *argv[]) {
         return result;
     } else if (strcmp(argv[1], "add") == 0) {
         if (argc < 3) {
-            printf("❌ No files specified to add\n");
+            printf("No files specified to add\n");
             curl_global_cleanup();
             return FAILURE;
         }
@@ -2098,7 +2095,7 @@ int main(int argc, char *argv[]) {
         return success;
     } else if (strcmp(argv[1], "rm") == 0) {
         if (argc < 3) {
-            printf("❌ No files specified to rm\n");
+            printf("No files specified to rm\n");
             curl_global_cleanup();
             return FAILURE;
         }
@@ -2122,7 +2119,7 @@ int main(int argc, char *argv[]) {
 
             free(entries[idx].path);
             free(entries[idx].hash);
-                if (count > 1) {
+            if (count > 1) {
                 memmove(entries + idx, entries + idx + 1, sizeof(IndexEntry) * (count - idx - 1));
             }
             count--;
@@ -2130,7 +2127,6 @@ int main(int argc, char *argv[]) {
             if (save_entries(".bit/index", entries, count) != SUCCESS) {
                 success = FAILURE;
             }
-            printf("Staged deletion of %s\n", argv[i]);
             free_index(entries, count);
         }
         curl_global_cleanup();
@@ -2156,7 +2152,7 @@ int main(int argc, char *argv[]) {
         curl_global_cleanup();
         return SUCCESS;
     } else {
-        printf("❌ Unknown command: %s\n", argv[1]);
+        printf("Unknown command: %s\n", argv[1]);
         printf("Use 'bit help' for usage information\n");
         curl_global_cleanup();
         return FAILURE;
