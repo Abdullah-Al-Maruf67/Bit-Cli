@@ -23,9 +23,10 @@ jobs:
         refreshenv  # Refresh environment variables
 
     - name: Set up the environment for building
+      shell: pwsh  # Use PowerShell as the shell
       run: |
-        mkdir -p C:/Program\ Files/mingw
-        echo "export PATH=\$PATH:/c/Program\ Files/mingw/bin" >> $GITHUB_ENV
+        mkdir "C:\Program Files\mingw"  # Create the directory using backslashes
+        $env:PATH = "$env:PATH;C:\Program Files\mingw\bin"  # Add mingw to PATH
 
     - name: Install required libraries (e.g., curl, json-c, zlib)
       run: |
