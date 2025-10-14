@@ -16,30 +16,23 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v2  # Checkout your code from GitHub
 
-    - name: Set up MinGW and dependencies
+    - name: Install MSYS2 and dependencies
       run: |
-        choco install mingw
-        choco install openssl
+        choco install msys2
         refreshenv  # Refresh environment variables
+        pacman -Syu  # Update the system
+        pacman -S mingw-w64-x86_64-curl mingw-w64-x86_64-zlib mingw-w64-x86_64-json-c  # Install libraries
 
-    - name: Set up the environment for building
-      shell: pwsh  # Use PowerShell as the shell
+    - name: Set up MSYS2 environment
       run: |
-        mkdir "C:\Program Files\mingw"  # Create the directory using backslashes
-        $env:PATH = "$env:PATH;C:\Program Files\mingw\bin"  # Add mingw to PATH
-
-    - name: Install required libraries (e.g., curl, json-c, zlib)
-      run: |
-        choco install libcurl zlib json-c
+        echo "C:/msys64/mingw64/bin" >> $GITHUB_ENV  # Add MSYS2 binaries to path
 
     - name: Build the program
       run: |
         mingw32-make  # Use mingw32-make (Windows-compatible Make)
-        # Alternatively, use your original Makefile's command directly:
-        # mingw32-make -f Makefile
 
     - name: Upload .exe artifact
-      uses: actions/upload-artifact@v4  # Updated to v4
+      uses: actions/upload-artifact@v4  # Upload the artifact
       with:
-        name: bit.exe  # The name of the file to be uploaded
-        path: bit.exe  # Path to the built executable
+        name: bit.exe
+        path: bit.exe
