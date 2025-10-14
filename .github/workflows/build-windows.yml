@@ -38,7 +38,7 @@ jobs:
         # mingw32-make -f Makefile
 
     - name: Upload .exe artifact
-      uses: actions/upload-artifact@v3  # Updated to v3
+      uses: actions/upload-artifact@v4  # Updated to v4
       with:
         name: bit.exe  # The name of the file to be uploaded
         path: bit.exe  # Path to the built executable
