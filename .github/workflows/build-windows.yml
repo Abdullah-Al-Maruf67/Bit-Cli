@@ -1,38 +1,44 @@
-name: Build C Program for Windows
+name: Build C Program for Windows with MSYS2
 
 on:
   push:
     branches:
-      - main  # Trigger the workflow on 'main' branch
+      - main
   pull_request:
     branches:
-      - main  # Trigger workflow on PRs to 'main'
+      - main
 
 jobs:
   build:
-    runs-on: windows-latest  # Use the Windows runner to compile for Windows
+    runs-on: windows-latest
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v2  # Checkout your code from GitHub
+    - name: Checkout repository
+      uses: actions/checkout@v2
 
-    - name: Install MSYS2 and dependencies
+    - name: Install MSYS2
       run: |
         choco install msys2
-        refreshenv  # Refresh environment variables
-        pacman -Syu  # Update the system
-        pacman -S mingw-w64-x86_64-curl mingw-w64-x86_64-zlib mingw-w64-x86_64-json-c  # Install libraries
+        refreshenv
 
-    - name: Set up MSYS2 environment
+    - name: Set MSYS2 environment
       run: |
-        echo "C:/msys64/mingw64/bin" >> $GITHUB_ENV  # Add MSYS2 binaries to path
+        echo "C:\\tools\\msys64\\usr\\bin" >> $GITHUB_ENV  # Add MSYS2 bin directory to PATH
 
-    - name: Build the program
+    - name: Update MSYS2
       run: |
-        mingw32-make  # Use mingw32-make (Windows-compatible Make)
+        C:\\tools\\msys64\\usr\\bin\\bash.exe -c "pacman -Syu --noconfirm"
 
-    - name: Upload .exe artifact
-      uses: actions/upload-artifact@v4  # Upload the artifact
+    - name: Install dependencies
+      run: |
+        C:\\tools\\msys64\\usr\\bin\\bash.exe -c "pacman -S --noconfirm mingw-w64-x86_64-gcc make"
+
+    - name: Build the C program
+      run: |
+        C:\\tools\\msys64\\usr\\bin\\bash.exe -c "make Bit.exe"
+
+    - name: Upload Windows executable
+      uses: actions/upload-artifact@v2
       with:
-        name: bit.exe
-        path: bit.exe
+        name: bit-executable
+        path: Bit.exe
