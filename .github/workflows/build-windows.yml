@@ -7,6 +7,7 @@ on:
   pull_request:
     branches:
       - main  # Trigger workflow on PRs to 'main'
+
 jobs:
   build:
     runs-on: windows-latest  # Use the Windows runner to compile for Windows
@@ -36,6 +37,7 @@ jobs:
           mingw-w64-x86_64-libpsl
           mingw-w64-x86_64-winpthreads
           mingw-w64-x86_64-zstd
+          mingw-w64-x86_64-libunistring
 
     - name: Build the program
       shell: msys2 {0}
@@ -60,6 +62,7 @@ jobs:
         cp /mingw64/bin/libnghttp3-9.dll .
         cp /mingw64/bin/libngtcp2-16.dll .
         cp /mingw64/bin/libngtcp2_crypto_ossl.dll .
+        cp /mingw64/bin/libngtcp2_crypto_ossl-0.dll .
         # SSH and other curl deps
         cp /mingw64/bin/libssh2-1.dll .
         cp /mingw64/bin/libidn2-0.dll .
@@ -70,6 +73,8 @@ jobs:
         # Runtime and threading
         cp /mingw64/bin/libgcc_s_seh-1.dll .
         cp /mingw64/bin/libwinpthread-1.dll .
+        # Additional
+        cp /mingw64/bin/libunistring-5.dll .
 
     - name: Upload artifact
       uses: actions/upload-artifact@v4  # Upload the artifact
