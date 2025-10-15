@@ -36,6 +36,7 @@ jobs:
           mingw-w64-x86_64-libidn2
           mingw-w64-x86_64-libpsl
           mingw-w64-x86_64-winpthreads
+          mingw-w64-x86_64-zstd
 
     - name: Build the program
       shell: msys2 {0}
@@ -52,6 +53,7 @@ jobs:
         cp /mingw64/bin/libssl-3-x64.dll .
         cp /mingw64/bin/libcrypto-3-x64.dll .
         # Brotli
+        cp /mingw64/bin/libbrotlicommon.dll .
         cp /mingw64/bin/libbrotlienc.dll .
         cp /mingw64/bin/libbrotlidec.dll .
         # HTTP/2+ and QUIC deps
@@ -64,6 +66,8 @@ jobs:
         cp /mingw64/bin/libidn2-0.dll .
         cp /mingw64/bin/libpsl-5.dll .
         cp /mingw64/bin/libiconv-2.dll .
+        # Compression
+        cp /mingw64/bin/libzstd.dll .
         # Runtime and threading
         cp /mingw64/bin/libgcc_s_seh-1.dll .
         cp /mingw64/bin/libwinpthread-1.dll .
