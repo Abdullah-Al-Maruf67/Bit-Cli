@@ -72,6 +72,9 @@ jobs:
         cp /mingw64/bin/libgcc_s_seh-1.dll .
         cp /mingw64/bin/libwinpthread-1.dll .
 
+        # Copy CA certificate bundle
+        cp cacert.pem .
+
     - name: Upload artifact
       uses: actions/upload-artifact@v4  # Upload the artifact
       with:

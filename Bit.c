@@ -211,6 +211,9 @@ int http_post(const char *url, const char *data, const char *auth_header, char *
         return FAILURE;
     }
 
+    // Set CA certificate bundle for SSL verification
+    curl_easy_setopt(curl, CURLOPT_CAINFO, "cacert.pem");
+
     // Set headers
     headers = curl_slist_append(headers, "Content-Type: application/json");
     if (auth_header && strlen(auth_header) > 0) {
@@ -265,6 +268,9 @@ int http_get(const char *url, const char *auth_header, char **response) {
         fprintf(stderr, "Failed to initialize CURL\n");
         return FAILURE;
     }
+
+    // Set CA certificate bundle for SSL verification
+    curl_easy_setopt(curl, CURLOPT_CAINFO, "cacert.pem");
 
     // Set headers
     if (auth_header && strlen(auth_header) > 0) {
