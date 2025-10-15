@@ -20,6 +20,7 @@
 
 #ifdef _WIN32
 #include <io.h>
+#include <windows.h>
 #define make_dir(path, mode) mkdir(path)
 #define strcasecmp _stricmp
 #else
@@ -39,6 +40,28 @@
 #define MAX_PATH_LENGTH 1024
 #define MAX_TOKEN_LENGTH 256
 #define MAX_RESPONSE_SIZE 8192
+
+// Get the directory of the executable
+char* get_executable_dir() {
+    static char exe_path[MAX_PATH_LENGTH] = {0};
+    if (exe_path[0] != '\0') return exe_path;
+
+#ifdef _WIN32
+    GetModuleFileName(NULL, exe_path, MAX_PATH_LENGTH);
+    char *last_slash = strrchr(exe_path, '\\');
+    if (last_slash) *last_slash = '\0';
+#else
+    ssize_t len = readlink("/proc/self/exe", exe_path, MAX_PATH_LENGTH - 1);
+    if (len != -1) {
+        exe_path[len] = '\0';
+        char *last_slash = strrchr(exe_path, '/');
+        if (last_slash) *last_slash = '\0';
+    } else {
+        strcpy(exe_path, ".");
+    }
+#endif
+    return exe_path;
+}
 
 // Data structures
 typedef struct {
@@ -212,7 +235,9 @@ int http_post(const char *url, const char *data, const char *auth_header, char *
     }
 
     // Set CA certificate bundle for SSL verification
-    curl_easy_setopt(curl, CURLOPT_CAINFO, "cacert.pem");
+    char ca_path[MAX_PATH_LENGTH];
+    snprintf(ca_path, sizeof(ca_path), "%s/cacert.pem", get_executable_dir());
+    curl_easy_setopt(curl, CURLOPT_CAINFO, ca_path);
 
     // Set headers
     headers = curl_slist_append(headers, "Content-Type: application/json");
@@ -270,7 +295,9 @@ int http_get(const char *url, const char *auth_header, char **response) {
     }
 
     // Set CA certificate bundle for SSL verification
-    curl_easy_setopt(curl, CURLOPT_CAINFO, "cacert.pem");
+    char ca_path[MAX_PATH_LENGTH];
+    snprintf(ca_path, sizeof(ca_path), "%s/cacert.pem", get_executable_dir());
+    curl_easy_setopt(curl, CURLOPT_CAINFO, ca_path);
 
     // Set headers
     if (auth_header && strlen(auth_header) > 0) {
