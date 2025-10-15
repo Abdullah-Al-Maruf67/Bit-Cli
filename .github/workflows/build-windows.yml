@@ -56,9 +56,9 @@ jobs:
         cp /mingw64/bin/libssl-3-x64.dll .
         cp /mingw64/bin/libcrypto-3-x64.dll .
         # Brotli
-        cp /mingw64/bin/libbrotlicommon-1.dll .
-        cp /mingw64/bin/libbrotlienc-1.dll .
-        cp /mingw64/bin/libbrotlidec-1.dll .
+        cp /mingw64/bin/libbrotlicommon.dll .
+        cp /mingw64/bin/libbrotlienc.dll .
+        cp /mingw64/bin/libbrotlidec.dll .
         # HTTP/2+ and QUIC deps
         cp /mingw64/bin/libnghttp2-14.dll .
         cp /mingw64/bin/libnghttp3-9.dll .
@@ -69,6 +69,7 @@ jobs:
         cp /mingw64/bin/libidn2-0.dll .
         cp /mingw64/bin/libpsl-5.dll .
         cp /mingw64/bin/libiconv-2.dll .
+        # Additional
         cp /mingw64/bin/libunistring-5.dll .
         cp /mingw64/bin/libintl-8.dll .
         cp /mingw64/bin/libpcre2-8-0.dll .
