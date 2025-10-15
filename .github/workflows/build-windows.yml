@@ -38,6 +38,8 @@ jobs:
           mingw-w64-x86_64-winpthreads
           mingw-w64-x86_64-zstd
           mingw-w64-x86_64-libunistring
+          mingw-w64-x86_64-gettext
+          mingw-w64-x86_64-pcre2
 
     - name: Build the program
       shell: msys2 {0}
@@ -54,27 +56,27 @@ jobs:
         cp /mingw64/bin/libssl-3-x64.dll .
         cp /mingw64/bin/libcrypto-3-x64.dll .
         # Brotli
-        cp /mingw64/bin/libbrotlicommon.dll .
-        cp /mingw64/bin/libbrotlienc.dll .
-        cp /mingw64/bin/libbrotlidec.dll .
+        cp /mingw64/bin/libbrotlicommon-1.dll .
+        cp /mingw64/bin/libbrotlienc-1.dll .
+        cp /mingw64/bin/libbrotlidec-1.dll .
         # HTTP/2+ and QUIC deps
         cp /mingw64/bin/libnghttp2-14.dll .
         cp /mingw64/bin/libnghttp3-9.dll .
         cp /mingw64/bin/libngtcp2-16.dll .
-        cp /mingw64/bin/libngtcp2_crypto_ossl.dll .
         cp /mingw64/bin/libngtcp2_crypto_ossl-0.dll .
         # SSH and other curl deps
         cp /mingw64/bin/libssh2-1.dll .
         cp /mingw64/bin/libidn2-0.dll .
         cp /mingw64/bin/libpsl-5.dll .
         cp /mingw64/bin/libiconv-2.dll .
+        cp /mingw64/bin/libunistring-5.dll .
+        cp /mingw64/bin/libintl-8.dll .
+        cp /mingw64/bin/libpcre2-8-0.dll .
         # Compression
         cp /mingw64/bin/libzstd.dll .
         # Runtime and threading
         cp /mingw64/bin/libgcc_s_seh-1.dll .
         cp /mingw64/bin/libwinpthread-1.dll .
-        # Additional
-        cp /mingw64/bin/libunistring-5.dll .
 
     - name: Upload artifact
       uses: actions/upload-artifact@v4  # Upload the artifact
