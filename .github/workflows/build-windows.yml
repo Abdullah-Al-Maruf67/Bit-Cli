@@ -37,6 +37,9 @@ jobs:
           mingw-w64-x86_64-libpsl
           mingw-w64-x86_64-winpthreads
           mingw-w64-x86_64-zstd
+          mingw-w64-x86_64-libunistring
+          mingw-w64-x86_64-gettext
+          mingw-w64-x86_64-pcre2
 
     - name: Build the program
       shell: msys2 {0}
@@ -60,12 +63,16 @@ jobs:
         cp /mingw64/bin/libnghttp2-14.dll .
         cp /mingw64/bin/libnghttp3-9.dll .
         cp /mingw64/bin/libngtcp2-16.dll .
-        cp /mingw64/bin/libngtcp2_crypto_ossl.dll .
+        cp /mingw64/bin/libngtcp2_crypto_ossl-0.dll .
         # SSH and other curl deps
         cp /mingw64/bin/libssh2-1.dll .
         cp /mingw64/bin/libidn2-0.dll .
         cp /mingw64/bin/libpsl-5.dll .
         cp /mingw64/bin/libiconv-2.dll .
+        # Additional
+        cp /mingw64/bin/libunistring-5.dll .
+        cp /mingw64/bin/libintl-8.dll .
+        cp /mingw64/bin/libpcre2-8-0.dll .
         # Compression
         cp /mingw64/bin/libzstd.dll .
         # Runtime and threading
