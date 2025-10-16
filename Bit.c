@@ -30,6 +30,7 @@
 // Configuration
 #define BIT_DIRECTORY ".bit"
 #define AUTH_TOKEN_FILE ".bit/auth_token"
+#define REFRESH_TOKEN_FILE ".bit/refresh_token"
 #define SHARE_TOKEN_FILE ".bit/share_token"
 #define REPO_ID_FILE ".bit/repo_id"
 #define LAST_COMMIT_ID_FILE ".bit/last_commit_id"
@@ -100,6 +101,7 @@ struct FilePair {
 
 // Global variables
 char g_auth_token[MAX_TOKEN_LENGTH] = "";
+char g_refresh_token[MAX_TOKEN_LENGTH] = "";
 char g_share_token[MAX_TOKEN_LENGTH] = "";
 char g_server_url[256] = SERVER_URL;
 
@@ -133,6 +135,8 @@ int get_object_dir(const char *hash, char *dir_path, size_t dir_size);
 // Authentication functions
 int save_auth_token(const char *token);
 char* load_auth_token();
+int save_refresh_token(const char *token);
+char* load_refresh_token();
 int save_share_token(const char *token);
 char* load_share_token();
 
@@ -151,6 +155,8 @@ int bit_push();
 int bit_status();
 int bit_log();
 int bit_sync();
+int refresh_access_token();
+int bit_clone(const char *share_token);
 
 // HTTP helper functions
 int http_post(const char *url, const char *data, const char *auth_header, char **response);
@@ -160,6 +166,7 @@ int http_get(const char *url, const char *auth_header, char **response);
 char* get_input(const char *prompt);
 void trim_whitespace(char *str);
 bool is_valid_json(const char *json_str);
+char* normalize_path(const char *path);
 
 // Index functions
 int load_entries(const char *file_path, IndexEntry **entries, size_t *count);
@@ -378,6 +385,40 @@ char* load_auth_token() {
     return NULL;
 }
 
+int save_refresh_token(const char *token) {
+    FILE *file = fopen(REFRESH_TOKEN_FILE, "w");
+    if (!file) {
+        fprintf(stderr, "Failed to save refresh token\n");
+        return FAILURE;
+    }
+    fprintf(file, "%s", token);
+    fclose(file);
+    return SUCCESS;
+}
+
+char* load_refresh_token() {
+    FILE *file = fopen(REFRESH_TOKEN_FILE, "r");
+    if (!file) {
+        return NULL;
+    }
+
+    char *token = malloc(MAX_TOKEN_LENGTH);
+    if (!token) {
+        fclose(file);
+        return NULL;
+    }
+
+    if (fgets(token, MAX_TOKEN_LENGTH, file)) {
+        trim_whitespace(token);
+        fclose(file);
+        return token;
+    }
+
+    fclose(file);
+    free(token);
+    return NULL;
+}
+
 int save_share_token(const char *token) {
     FILE *file = fopen(SHARE_TOKEN_FILE, "w");
     if (!file) {
@@ -515,32 +556,55 @@ int bit_login(const char *username, const char *password) {
             json_object_put(json_payload);
             return FAILURE;
         }
-        
-        struct json_object *access_token_obj;
-        if (json_object_object_get_ex(json_response, "access", &access_token_obj)) {
-            const char *access_token = json_object_get_string(access_token_obj);
-            if (access_token && strlen(access_token) > 0) {
-                strcpy(g_auth_token, access_token);
-                save_auth_token(access_token);
-                printf("Login successful!\n");
-            } else {
-                printf("Access token is empty or null\n");
-            }
-            json_object_put(json_response);
-            free(response);
-            json_object_put(json_payload);
-            return SUCCESS;
-        } else {
-            printf("Failed to find access_token in response\n");
-            json_object_put(json_response);
+
+        struct json_object *access_token_obj = NULL;
+        struct json_object *refresh_token_obj = NULL;
+        const char *access_token = NULL;
+        const char *refresh_token = NULL;
+
+        if (json_object_object_get_ex(json_response, "access", &access_token_obj) ||
+            json_object_object_get_ex(json_response, "accessToken", &access_token_obj)) {
+            access_token = json_object_get_string(access_token_obj);
         }
+
+        if (json_object_object_get_ex(json_response, "refresh", &refresh_token_obj) ||
+            json_object_object_get_ex(json_response, "refreshToken", &refresh_token_obj)) {
+            refresh_token = json_object_get_string(refresh_token_obj);
+        }
+
+        bool success = true;
+
+        if (access_token && strlen(access_token) > 0) {
+            strcpy(g_auth_token, access_token);
+            save_auth_token(access_token);
+        } else {
+            printf("Access token missing in response\n");
+            success = false;
+        }
+
+        if (refresh_token && strlen(refresh_token) > 0) {
+            strcpy(g_refresh_token, refresh_token);
+            save_refresh_token(refresh_token);
+        } else {
+            printf("Refresh token missing in response\n");
+            success = false;
+        }
+
+        if (success) {
+            printf("Login successful!\n");
+        }
+
+        json_object_put(json_response);
+        if (response) free(response);
+        json_object_put(json_payload);
+        return success ? SUCCESS : FAILURE;
     } else {
         printf("Login failed (Status: %d)\n", status_code);
         if (response) {
             printf("Response: %s\n", response);
         }
     }
-    
+
     if (response) free(response);
     json_object_put(json_payload);
     return FAILURE;
@@ -578,6 +642,15 @@ int bit_create_repo(const char *name, const char *description) {
     snprintf(url, sizeof(url), "%s/data/repositories/", API_BASE_URL);
     
     int status_code = http_post(url, json_str, auth_header, &response);
+
+    if ((status_code == 401 || status_code == 403) && refresh_access_token() == SUCCESS) {
+        if (response) {
+            free(response);
+            response = NULL;
+        }
+        snprintf(auth_header, sizeof(auth_header), "Authorization: Bearer %s", g_auth_token);
+        status_code = http_post(url, json_str, auth_header, &response);
+    }
     
     if (status_code == 201) {
         // Parse response to get repo id and share token
@@ -646,6 +719,15 @@ int bit_generate_share_token(const char *repo_id) {
     snprintf(url, sizeof(url), "%s/data/repositories/%s/generate_link/", API_BASE_URL, repo_id);
     
     int status_code = http_post(url, "{}", auth_header, &response);
+
+    if ((status_code == 401 || status_code == 403) && refresh_access_token() == SUCCESS) {
+        if (response) {
+            free(response);
+            response = NULL;
+        }
+        snprintf(auth_header, sizeof(auth_header), "Authorization: Bearer %s", g_auth_token);
+        status_code = http_post(url, "{}", auth_header, &response);
+    }
     
     if (status_code == 201) {
         // Parse response
@@ -1103,6 +1185,21 @@ bool is_valid_json(const char *json_str) {
     return false;
 }
 
+char* normalize_path(const char *path) {
+    if (!path) return NULL;
+    size_t len = strlen(path);
+    char *normalized = malloc(len + 1);
+    if (!normalized) return NULL;
+    strcpy(normalized, path);
+#ifdef _WIN32
+    // Replace '/' with '\' on Windows
+    for (char *p = normalized; *p; p++) {
+        if (*p == '/') *p = '\\';
+    }
+#endif
+    return normalized;
+}
+
 char* base64_encode(const unsigned char *data, size_t input_length) {
     BIO *bio, *b64;
     BUF_MEM *bufferPtr;
@@ -1241,6 +1338,7 @@ void print_help() {
     printf("  status                          Show working tree status\n");
     printf("  log                             Show commit history\n");
     printf("  sync                            Revert to last commit state\n");
+    printf("  clone <token>                   Clone repository using share token\n");
     printf("  help                            Show this help\n\n");
 }
 
@@ -1527,13 +1625,13 @@ int mkdir_p(const char *path) {
 
     char *p;
     for (p = dir_path + 1; *p; p++) {
-        if (*p == '/') {
+        if (*p == '/' || *p == '\\') {  // Handle both separators
             *p = '\0';
             if (make_dir(dir_path, 0755) != 0 && errno != EEXIST) {
                 free(dir_path);
                 return FAILURE;
             }
-            *p = '/';
+            *p = '/';  // Restore to forward slash for consistency
         }
     }
 
@@ -1985,9 +2083,238 @@ int bit_push_commit(const char *author, const char *email, const char *message) 
     return bit_commit_to_server(author, email, message);
 }
 
+int bit_clone(const char *share_token) {
+    printf("Cloning repository with share token: %s\n", share_token);
+
+    // Check if current directory is initialized
+    if (!is_bit_initialized(BIT_DIRECTORY)) {
+        printf("Error: Current directory is not a bit repository. Run 'bit init' first.\n");
+        return FAILURE;
+    }
+
+    // Fetch repository data
+    char url[512];
+    snprintf(url, sizeof(url), "%s/data/share-links/%s/repository/", API_BASE_URL, share_token);
+
+    char *response = NULL;
+    int status_code = http_get(url, NULL, &response);
+
+    if (status_code != 200) {
+        printf("Failed to fetch repository data (Status: %d)\n", status_code);
+        if (response) {
+            printf("Response: %s\n", response);
+            free(response);
+        }
+        return FAILURE;
+    }
+
+    // Parse JSON response
+    struct json_object *json_response = json_tokener_parse(response);
+    if (!json_response) {
+        printf("Failed to parse repository response\n");
+        if (response) free(response);
+        return FAILURE;
+    }
+
+    struct json_object *contents_obj;
+    if (!json_object_object_get_ex(json_response, "contents", &contents_obj)) {
+        printf("No contents in response\n");
+        json_object_put(json_response);
+        if (response) free(response);
+        return FAILURE;
+    }
+
+    // Recursive function to process contents
+    int process_contents(struct json_object *contents, const char *current_path) {
+        if (!contents || json_object_get_type(contents) != json_type_object) {
+            return FAILURE;
+        }
+
+        json_object_object_foreach(contents, key, val) {
+            if (strcmp(key, "files") == 0) {
+                // Files array
+                if (json_object_get_type(val) == json_type_array) {
+                    int file_count = json_object_array_length(val);
+                    for (int i = 0; i < file_count; i++) {
+                        struct json_object *file_obj = json_object_array_get_idx(val, i);
+                        struct json_object *sha1_obj, *path_obj;
+                        if (json_object_object_get_ex(file_obj, "sha1", &sha1_obj) &&
+                            json_object_object_get_ex(file_obj, "path", &path_obj)) {
+                            // const char *name = json_object_get_string(name_obj); // Not used
+                            const char *sha1 = json_object_get_string(sha1_obj);
+                            const char *file_path = json_object_get_string(path_obj);
+
+                            // Normalize path for platform
+                            char *normalized_path = normalize_path(file_path);
+                            if (!normalized_path) {
+                                printf("Failed to normalize path for %s\n", file_path);
+                                continue;
+                            }
+
+                            // Fetch file content
+                            char file_url[512];
+                            snprintf(file_url, sizeof(file_url), "%s/data/share-links/%s/file/?sha1=%s", API_BASE_URL, share_token, sha1);
+
+                            char *file_response = NULL;
+                            int file_status = http_get(file_url, NULL, &file_response);
+
+                            if (file_status == 200) {
+                                // Parse file response
+                                struct json_object *file_json = json_tokener_parse(file_response);
+                                if (file_json) {
+                                    struct json_object *text_obj, *encoding_obj;
+                                    if (json_object_object_get_ex(file_json, "text", &text_obj) &&
+                                        json_object_object_get_ex(file_json, "encoding", &encoding_obj)) {
+                                        const char *text = json_object_get_string(text_obj);
+                                        const char *encoding = json_object_get_string(encoding_obj);
+
+                                        if (strcmp(encoding, "utf-8") == 0) {
+                                            // Create directory if needed
+                                            char *dir = strdup(normalized_path);
+                                            char *slash = strrchr(dir, '/');
+#ifdef _WIN32
+                                            char *backslash = strrchr(dir, '\\');
+                                            if (backslash > slash) slash = backslash;
+#endif
+                                            if (slash) {
+                                                *slash = '\0';
+                                                mkdir_p(dir);
+                                            }
+                                            free(dir);
+
+                                            // Write file
+                                            FILE *out = fopen(normalized_path, "w");
+                                            if (out) {
+                                                fprintf(out, "%s", text);
+                                                fclose(out);
+                                                printf("Cloned %s\n", file_path);  // Show original path in output
+                                            } else {
+                                                printf("Failed to write %s\n", file_path);
+                                            }
+                                        } else {
+                                            printf("Unsupported encoding for %s\n", file_path);
+                                        }
+                                    }
+                                    json_object_put(file_json);
+                                }
+                            } else {
+                                printf("Failed to fetch file %s (Status: %d)\n", file_path, file_status);
+                            }
+                            if (file_response) free(file_response);
+                            free(normalized_path);
+                        }
+                    }
+                }
+            } else {
+                // Directory
+                char new_path[MAX_PATH_LENGTH];
+                if (strlen(current_path) > 0) {
+                    snprintf(new_path, sizeof(new_path), "%s/%s", current_path, key);
+                } else {
+                    strcpy(new_path, key);
+                }
+                process_contents(val, new_path);
+            }
+        }
+        return SUCCESS;
+    }
+
+    int result = process_contents(contents_obj, "");
+
+    json_object_put(json_response);
+    if (response) free(response);
+
+    if (result == SUCCESS) {
+        printf("Repository cloned successfully!\n");
+    }
+
+    return result;
+}
+
 // ============================================================================
 // MAIN FUNCTION
 // ============================================================================
+
+int refresh_access_token() {
+    if (strlen(g_refresh_token) == 0) {
+        char *token = load_refresh_token();
+        if (token) {
+            strcpy(g_refresh_token, token);
+            free(token);
+        }
+    }
+
+    if (strlen(g_refresh_token) == 0) {
+        printf("Refresh token unavailable. Please login again.\n");
+        return FAILURE;
+    }
+
+    struct json_object *json_payload = json_object_new_object();
+    json_object_object_add(json_payload, "refresh", json_object_new_string(g_refresh_token));
+
+    const char *json_str = json_object_to_json_string(json_payload);
+    char url[512];
+    snprintf(url, sizeof(url), "%s/users/token/refresh/", API_BASE_URL);
+
+    char *response = NULL;
+    int status_code = http_post(url, json_str, NULL, &response);
+
+    if (status_code != 200) {
+        printf("Token refresh failed (Status: %d)\n", status_code);
+        if (response) {
+            printf("Response: %s\n", response);
+            free(response);
+        }
+        json_object_put(json_payload);
+        return FAILURE;
+    }
+
+    struct json_object *json_response = json_tokener_parse(response);
+    if (!json_response) {
+        printf("Failed to parse token refresh response\n");
+        if (response) free(response);
+        json_object_put(json_payload);
+        return FAILURE;
+    }
+
+    struct json_object *access_token_obj = NULL;
+    struct json_object *refresh_token_obj = NULL;
+    const char *access_token = NULL;
+    const char *refresh_token = NULL;
+
+    if (json_object_object_get_ex(json_response, "access", &access_token_obj) ||
+        json_object_object_get_ex(json_response, "accessToken", &access_token_obj)) {
+        access_token = json_object_get_string(access_token_obj);
+    }
+
+    if (json_object_object_get_ex(json_response, "refresh", &refresh_token_obj) ||
+        json_object_object_get_ex(json_response, "refreshToken", &refresh_token_obj)) {
+        refresh_token = json_object_get_string(refresh_token_obj);
+    }
+
+    if (!access_token || strlen(access_token) == 0) {
+        printf("Token refresh response missing access token\n");
+        if (response) free(response);
+        json_object_put(json_response);
+        json_object_put(json_payload);
+        return FAILURE;
+    }
+
+    strcpy(g_auth_token, access_token);
+    save_auth_token(access_token);
+
+    if (refresh_token && strlen(refresh_token) > 0) {
+        strcpy(g_refresh_token, refresh_token);
+        save_refresh_token(refresh_token);
+    }
+
+    printf("Access token refreshed.\n");
+
+    if (response) free(response);
+    json_object_put(json_response);
+    json_object_put(json_payload);
+    return SUCCESS;
+}
 
 int main(int argc, char *argv[]) {
     if (argc < 2) {
@@ -2005,6 +2332,12 @@ int main(int argc, char *argv[]) {
         free(auth_token);
     }
     
+    char *refresh_token = load_refresh_token();
+    if (refresh_token) {
+        strcpy(g_refresh_token, refresh_token);
+        free(refresh_token);
+    }
+
     char *share_token = load_share_token();
     if (share_token) {
         strcpy(g_share_token, share_token);
@@ -2179,6 +2512,17 @@ int main(int argc, char *argv[]) {
         return result;
     } else if (strcmp(argv[1], "sync") == 0) {
         int result = bit_sync();
+        curl_global_cleanup();
+        return result;
+    } else if (strcmp(argv[1], "clone") == 0) {
+        if (argc < 3) {
+            printf("Share token required\n");
+            printf("Usage: bit clone <share_token>\n");
+            curl_global_cleanup();
+            return FAILURE;
+        }
+
+        int result = bit_clone(argv[2]);
         curl_global_cleanup();
         return result;
     } else if (strcmp(argv[1], "help") == 0) {
