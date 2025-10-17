@@ -1,7 +1,9 @@
 # Bit-Cli
 
 Bit is a fast, lightweight version control system designed for modern development workflows. With an intuitive CLI and powerful features, Bit helps you track changes, collaborate with others, and maintain clean project history.
-disclaimer bit is not fully developed, so there might be a lot of bugs.
+
+Disclaimer:
+Bit is currently in its early stages of development. While it includes many powerful features, please be aware that the project is not yet fully stable and may contain bugs or incomplete functionality. Use it at your own discretion, and feel free to report issues or contribute to its improvement.
 
 ## ✨ Features
 
