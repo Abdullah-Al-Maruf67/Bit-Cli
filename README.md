@@ -1,6 +1,7 @@
 # Bit-Cli
 
 Bit is a fast, lightweight version control system designed for modern development workflows. With an intuitive CLI and powerful features, Bit helps you track changes, collaborate with others, and maintain clean project history.
+disclaimer bit is not fully developed, so there might be a lot of bugs.
 
 ## ✨ Features
 
@@ -12,6 +13,19 @@ Bit is a fast, lightweight version control system designed for modern developmen
 - 🔍 Easy-to-read commit history
 
 ## 📦 Installation
+
+### Windows
+1. Download the latest `bit-windows.zip` from the releases page
+2. Extract the ZIP file to a permanent location (e.g., `C:\Bit`)
+3. Add Bit to your system PATH:
+   - Press `Win + R`, type `sysdm.cpl` and press Enter
+   - Go to Advanced → Environment Variables
+   - Under System Variables, find and select "Path", then click Edit
+   - Click New and add the full path to the extracted folder (e.g., `C:\Bit`)
+   - Click OK on all windows to save
+4. Open a new Command Prompt and verify with:
+   ```cmd
+   bit help
 
 ### Linux (AppImage)
 ```bash
@@ -67,7 +81,7 @@ bit commit -m "Initial commit"
 
 ### Clone a Remote Repository
 ```bash
-bit clone https://example.com/repo.git
+bit clone <share token here>
 ```
 
 ### Push Changes
@@ -81,10 +95,3 @@ Contributions are always welcome! If you'd like to contribute to Bit, follow the
 2. Create a new branch.
 3. Make your changes and commit them.
 4. Push to your branch and create a pull request.
-
-## 📝 License
-This project is not yet licensed. For inquiries about usage, please contact the repository owner.
-
----
-
-Thank you for checking out Bit! If you have any questions or suggestions, feel free to open an issue or reach out directly.
