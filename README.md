@@ -12,7 +12,7 @@ Bit is currently in its early stages of development. While it includes many powe
 - 🔄 Simple, Git-like commands
 - 🚀 Blazing fast performance
 - 🔒 Built-in security with SSL/TLS support
-- 📦 Cross-platform (Windows, Linux, macOS)
+- 📦 Cross-platform (Windows, Linux)
 - 📡 Remote repository support
 - 🔍 Easy-to-read commit history
 
